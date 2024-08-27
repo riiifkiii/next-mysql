@@ -1,40 +1,300 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
-
-## Getting Started
-
-First, run the development server:
+### 1. Install Dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install mysql2
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Membuat Koneksi ke MySQL
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+```javascript
+// lib/db.js
+import mysql from "mysql2/promise";
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+const connectToDatabase = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  database: "next_mysql",
+});
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+export default connectToDatabase;
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+### 3. Mengambil data melalui API Routes
 
-## Learn More
+```javascript
+// pages/api/data.js
+import connectToDatabase from "@/lib/db";
 
-To learn more about Next.js, take a look at the following resources:
+export default async function handler(req, res) {
+  if (req.method === "GET") {
+    try {
+      const [rows] = await connectToDatabase.query("SELECT * FROM users");
+      res.status(200).json(rows);
+      console.log(req.method);
+    } catch (error) {
+      res.status(500).json({ message: "Ada kesalahan dalam mengambil data" });
+    }
+    return;
+  }
+}
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Menampilkan data
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+```javascript
+// pages/index.js
+import { useCallback, useEffect, useState } from "react";
 
-## Deploy on Vercel
+export default function Home() {
+  const [users, setUsers] = useState({});
+  const [id, setId] = useState();
+  const [name, setName] = useState();
+  const [email, setEmail] = useState();
+  const [isLoading, setIsLoading] = useState(true);
+  const [buttonStatus, setButtonStatus] = useState("Submit");
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+  const getData = useCallback(async () => {
+    const fetchingDataUsersFromDB = await fetch("/api/users");
+    const dataUsersFromDB = await fetchingDataUsersFromDB.json();
+    setUsers(dataUsersFromDB);
+    setIsLoading(false);
+  }, []);
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+ //Code ................
+
+  useEffect(() => {
+    getData();
+  }, [getData, inputData, deleteData, editData]);
+
+  if (isLoading) return "Loading...";
+
+  return (
+    //Code ................
+  );
+}
+```
+
+```javascript
+// pages/api/data.js
+import connectToDatabase from "@/lib/db";
+
+export default async function handler(req, res) {
+  if (req.method === "GET") {
+    try {
+      const [rows] = await connectToDatabase.query("SELECT * FROM users");
+      res.status(200).json(rows);
+      console.log(req.method);
+    } catch (error) {
+      res.status(500).json({ message: "Ada kesalahan dalam mengambil data" });
+    }
+    return;
+  }
+
+  //Code ................
+}
+```
+
+### 5. Menambah Data
+
+```javascript
+// pages/index.js
+import { useCallback, useEffect, useState } from "react";
+
+export default function Home() {
+  const [users, setUsers] = useState({});
+  const [id, setId] = useState();
+  const [name, setName] = useState();
+  const [email, setEmail] = useState();
+  const [isLoading, setIsLoading] = useState(true);
+  const [buttonStatus, setButtonStatus] = useState("Submit");
+
+ //Code ................
+
+  const inputData = useCallback(() => {
+    if (!name || !email) {
+      alert("Mohon isi data dengan lengkap!");
+      return;
+    }
+
+    const dataToSend = { name, email };
+
+    const sendingData = async () => {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dataToSend),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      setName("");
+      setEmail("");
+    };
+
+    sendingData();
+  }, [name, email]);
+
+  //Code ................
+
+  return (
+    //Code ................
+  );
+}
+
+```
+
+```javascript
+// pages/api/data.js
+import connectToDatabase from "@/lib/db";
+
+export default async function handler(req, res) {
+  //Code ................
+
+  if (req.method === "POST") {
+    try {
+      const { name, email } = req.body;
+      await connectToDatabase.query(
+        "INSERT INTO users (name, email) VALUES (?,?)",
+        [name, email]
+      );
+      res.status(201).json({ message: "Data berhasil disimpan" });
+      console.log(req.method);
+    } catch (error) {
+      res.status(500).json({ message: "Ada kesalahan dalam menyimpan data" });
+    }
+    return;
+  }
+
+  //Code ................
+}
+```
+
+### 6. Menghapus Data
+
+```javascript
+// pages/index.js
+import { useCallback, useEffect, useState } from "react";
+
+export default function Home() {
+  const [users, setUsers] = useState({});
+  const [id, setId] = useState();
+  const [name, setName] = useState();
+  const [email, setEmail] = useState();
+  const [isLoading, setIsLoading] = useState(true);
+  const [buttonStatus, setButtonStatus] = useState("Submit");
+
+  //Code ................
+
+  const deleteData = useCallback(async (id) => {
+    const response = await fetch(`/api/users/`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    getData();
+  }, []);
+
+  //Code ................
+
+  return (
+    //Code ................
+  );
+}
+
+```
+
+```javascript
+// pages/api/data.js
+import connectToDatabase from "@/lib/db";
+
+export default async function handler(req, res) {
+  //Code ................
+
+  if (req.method === "DELETE") {
+    console.log(req);
+    try {
+      const { id } = req.body;
+      await connectToDatabase.query("DELETE FROM users WHERE id = ?", id);
+      res.status(200).json({ message: "Data berhasil dihapus" });
+    } catch (error) {
+      res.status(500).json({ message: "Data gagal dihapus" });
+    }
+  }
+
+  //Code ................
+}
+```
+
+### 7. Mengubah Data
+
+```javascript
+// pages/index.js
+import { useCallback, useEffect, useState } from "react";
+
+export default function Home() {
+  const [users, setUsers] = useState({});
+  const [id, setId] = useState();
+  const [name, setName] = useState();
+  const [email, setEmail] = useState();
+  const [isLoading, setIsLoading] = useState(true);
+  const [buttonStatus, setButtonStatus] = useState("Submit");
+
+  //Code ................
+
+  const editData = useCallback(async () => {
+    await fetch("/api/users", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: id,
+        name: name,
+        email: email,
+      }),
+    });
+    setName("");
+    setEmail("");
+    setButtonStatus("Submit");
+  }, [id, name, email]);
+
+  //Code ................
+
+  return (
+    //Code ................
+  );
+}
+
+```
+
+```javascript
+// pages/api/data.js
+import connectToDatabase from "@/lib/db";
+
+export default async function handler(req, res) {
+  //Code ................
+
+  if (req.method === "PUT") {
+    try {
+      const { id, name, email } = req.body;
+      await connectToDatabase.query(
+        "UPDATE users SET name = ?, email = ? WHERE id = ?",
+        [name, email, id]
+      );
+      res.status(200).json({ message: "Berhasil di ubah" });
+    } catch (error) {
+      res.status(500).json({ message: "Gagal mengubah" });
+    }
+  }
+}
+```
